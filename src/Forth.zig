@@ -1,7 +1,11 @@
 const std = @import("std");
+const root = @import("root");
+
+const cfg = if (@hasDecl(root, "forth_cfg")) root.forth_cfg else Cfg{};
 
 const builtins = @import("builtins.zig");
 pub const io = @import("io.zig");
+pub const Cfg = @import("Cfg.zig");
 
 pub const cell_size = @sizeOf(usize);
 pub const cell_bits = cell_size * 8;
@@ -35,7 +39,7 @@ pub const DictEntry = extern struct {
     codeword: Codeword,
 };
 
-pub const max_line_len = 80;
+pub const max_line_len = cfg.max_line_len;
 const InputSource = union(enum) {
     file: struct {
         line: [max_line_len]Char,
@@ -50,21 +54,21 @@ const InputStackItem = struct {
 };
 const InputStack = std.BoundedArray(InputStackItem, 32);
 
-pub const mem_size = 64 * 1024 * cell_size;
-pub const stack_size = 1024;
+pub const mem_size = cfg.mem_size;
+pub const stack_size = cfg.stack_size;
 
 state: Cell = 0,
 base: UCell = 10,
 
-mem: [mem_size]UByte align(@alignOf(Cell)) = .{0} ** mem_size,
+mem: [mem_size]UByte align(@alignOf(Cell)) = undefined,
 here: [*]UByte = undefined,
 dict: ?*DictEntry = null,
 
-stack: [stack_size]Cell = .{0} ** stack_size,
+stack: [stack_size]Cell = undefined,
 sp: [*]Cell = undefined,
-rstack: [stack_size]UCell = .{0} ** stack_size,
+rstack: [stack_size]UCell = undefined,
 rsp: [*]UCell = undefined,
-leavestack: [stack_size]UCell = .{0} ** stack_size,
+leavestack: [stack_size]UCell = undefined,
 lsp: [*]UCell = undefined,
 
 ip: [*]const [*]const Codeword = undefined,

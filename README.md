@@ -8,7 +8,7 @@ Currently implements the entire core word set.
 - [X] Core words
 - [X] Core extension words
 - [ ] Comptime minimization of src/forth.f
-- [ ] Comptime configuration of VM
+- [X] Comptime configuration of VM
 - [X] Move I/O to seperate module
 - [ ] Port to Raspberry Pi Pico
 - [ ] Block access words

@@ -652,8 +652,6 @@ CREATE PAD 256 CHARS ALLOT
 ." *****************************************" CR
 ." * HELLO WORLD!                          *" CR
 ." * FORTH SYSTEM BY github.com/cajwebster *" CR
-." * " UNUSED DUP CELLSIZE / 5 U.R ."  CELLS FREE (" 1024 / 3 U.R ." KiB)             *" CR
 ." *****************************************" CR
+UNUSED DUP CELLSIZE / U. ." CELLS FREE (" 1024 / U. ." KiB)" CR
 ." FORTH READY" CR
-
-PARSE-S\" HELLO\"WORLD\\" TYPE CR
