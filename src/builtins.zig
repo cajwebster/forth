@@ -41,7 +41,7 @@ pub fn LITSTRING(forth: *Forth) noreturn {
 pub fn TYPE(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
-    std.fmt.format(forth.stdout.writer(), "{s}", .{addr[0..len]}) catch forth.die("Error writing to stdout");
+    Forth.io.format("{s}", .{addr[0..len]}) catch forth.die("Error writing to stdout");
     forth.next();
 }
 
@@ -113,7 +113,7 @@ pub fn INTERPRET(forth: *Forth) noreturn {
                 forth.compile_cell(num);
             }
         } else {
-            std.fmt.format(forth.stdout.writer(), " '{s}'?\n", .{word}) catch forth.die("Error writing to stdout");
+            Forth.io.format(" '{s}'?\n", .{word}) catch forth.die("Error writing to stdout");
             if (forth.state != 0) {
                 // remove the word currently being compiled from the dictionary
                 // and return to interpretation state
@@ -122,7 +122,7 @@ pub fn INTERPRET(forth: *Forth) noreturn {
             }
             forth.ip = &forth.quit;
             forth.input_stack = .{};
-            forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .file = forth.stdin } };
+            forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .handle = null } };
             forth.in = 0;
             forth.next();
         }
@@ -157,7 +157,7 @@ pub fn REFILL(forth: *Forth) noreturn {
 
 pub fn EMIT(forth: *Forth) noreturn {
     const c: Char = @truncate(forth.popu());
-    std.fmt.format(forth.stdout.writer(), "{c}", .{c}) catch forth.die("Error writing to stdout");
+    Forth.io.format("{c}", .{c}) catch forth.die("Error writing to stdout");
     forth.next();
 }
 
@@ -182,8 +182,8 @@ pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
     const path = addr[0..len];
     forth.push_input_source();
-    const file = std.fs.cwd().openFile(path, .{}) catch forth.die("Error opening file");
-    forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .file = file } };
+    const file = Forth.io.openFile(path) catch forth.die("Error opening file");
+    forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .handle = file } };
     forth.input_buffer = &.{};
     forth.in = 1;
     forth.next();
@@ -413,7 +413,7 @@ pub fn @"RESTORE-INPUT"(forth: *Forth) noreturn {
 
 pub fn @"SOURCE-ID"(forth: *Forth) noreturn {
     forth.push(switch (forth.input_source) {
-        .file => |file| if (file.file.handle == forth.stdin.handle) 0 else @panic("TODO: SOURCE-ID with file input"),
+        .file => |file| if (file.handle == null) 0 else @panic("TODO: SOURCE-ID with file input"),
         .str => -1,
     });
     forth.next();

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const builtins = @import("builtins.zig");
+pub const io = @import("io.zig");
 
 pub const cell_size = @sizeOf(usize);
 pub const cell_bits = cell_size * 8;
@@ -34,11 +35,12 @@ pub const DictEntry = extern struct {
     codeword: Codeword,
 };
 
+pub const max_line_len = 80;
 const InputSource = union(enum) {
     file: struct {
-        line: [80]Char,
-        file: std.fs.File,
+        line: [max_line_len]Char,
         len: UCell,
+        handle: ?io.File,
     },
     str: []u8,
 };
@@ -68,9 +70,6 @@ lsp: [*]UCell = undefined,
 ip: [*]const [*]const Codeword = undefined,
 next_word: [*]const Codeword = undefined,
 
-stdin: std.fs.File = undefined,
-stdout: std.fs.File = undefined,
-
 input_source: InputSource = .{ .file = undefined },
 input_stack: InputStack = InputStack{},
 input_buffer: []u8 = undefined,
@@ -87,9 +86,7 @@ pub fn init(self: *Forth) noreturn {
     self.rsp = &self.rstack;
     self.lsp = &self.leavestack;
 
-    self.stdin = std.io.getStdIn();
-    self.stdout = std.io.getStdOut();
-    self.input_source.file.file = self.stdin;
+    self.input_source.file.handle = null;
     self.input_buffer = self.input_source.file.line[0..1];
 
     self.rng.seed(@bitCast(std.time.timestamp()));
@@ -196,7 +193,7 @@ pub fn init(self: *Forth) noreturn {
 
     const start = [_][*]Codeword{@ptrCast(&self.find_word("_START").?.codeword)};
     self.ip = &start;
-    std.fmt.format(self.stdout.writer(), "Starting...\n", .{}) catch self.die("Error writing to stdout");
+    io.format("Starting...\n", .{}) catch self.die("Error writing to stdout");
     self.next();
 }
 
@@ -212,7 +209,7 @@ pub fn parseInt(self: *Forth, buf: []const Char) std.fmt.ParseIntError!Cell {
 }
 
 pub fn key(self: *Forth) Cell {
-    return self.stdin.reader().readByte() catch |e| switch (e) {
+    return io.readChar() catch |e| switch (e) {
         error.EndOfStream => -1,
         else => self.die("Error reading key"),
     };
@@ -222,19 +219,12 @@ pub fn refill(self: *Forth) bool {
     switch (self.input_source) {
         .file => |*file| {
             self.input_buffer = &.{};
-            var stream = std.io.fixedBufferStream(&file.line);
-            file.file.reader().streamUntilDelimiter(
-                stream.writer(),
-                '\n',
-                file.line.len,
-            ) catch |e| switch (e) {
-                error.StreamTooLong => file.file.reader().skipUntilDelimiterOrEof('\n') catch {},
+            self.input_buffer = io.readLine(file.handle, &file.line) catch |e| switch (e) {
                 error.EndOfStream => return false,
                 else => self.die("Error reading from stdin"),
             };
             self.in = 0;
-            self.input_buffer = file.line[0..stream.pos];
-            file.len = stream.pos;
+            file.len = self.input_buffer.len;
             return true;
         },
         .str => return false,
@@ -415,12 +405,13 @@ pub fn compile_cell(self: *Forth, val: Cell) void {
 }
 
 pub fn die(self: *Forth, msg: []const u8) noreturn {
-    std.fmt.format(self.stdout.writer(), "\nFatal error: {s}\n", .{msg}) catch {};
+    _ = self;
+    io.format("\nFatal error: {s}\n", .{msg}) catch {};
     std.process.exit(1);
 }
 
 pub fn bye(self: *Forth) noreturn {
-    std.fmt.format(self.stdout.writer(), "\nGoodbye.\n", .{}) catch self.die("Could not write to stdout");
+    io.format("\nGoodbye.\n", .{}) catch self.die("Could not write to stdout");
     std.process.exit(0);
 }
 
