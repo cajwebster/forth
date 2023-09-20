@@ -683,6 +683,38 @@ CREATE PAD 256 CHARS ALLOT
 : CS-PICK PICK ;
 : CS-ROLL ROLL ;
 
+: [DEFINED]
+    BL WORD FIND
+    NIP 0<>
+; IMMEDIATE
+
+: [UNDEFINED]
+    POSTPONE [DEFINED] INVERT
+; IMMEDIATE
+
+: N>R
+    DUP
+    BEGIN
+        DUP
+    WHILE
+        ROT R> SWAP >R >R
+        1-
+    REPEAT
+    DROP
+    R> SWAP >R >R
+;
+
+: NR>
+    R> R> SWAP >R DUP
+    BEGIN
+        DUP
+    WHILE
+        R> R> SWAP >R ROT ROT
+        1-
+    REPEAT
+    DROP
+;
+
 ." *****************************************" CR
 ." * HELLO WORLD!                          *" CR
 ." * FORTH SYSTEM BY github.com/cajwebster *" CR
