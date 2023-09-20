@@ -58,6 +58,12 @@
     0 ,
 ; IMMEDIATE
 
+: AHEAD
+    ['] BRANCH ,
+    HERE
+    0 ,
+; IMMEDIATE
+
 : THEN
     DUP
     HERE SWAP -
