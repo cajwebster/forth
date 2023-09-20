@@ -715,6 +715,19 @@ CREATE PAD 256 CHARS ALLOT
     DROP
 ;
 
+: SYNONYM
+    DOCOL: IMMEDIATE
+    ' POSTPONE LITERAL
+    POSTPONE DUP POSTPONE IMMEDIATE?
+    POSTPONE STATE POSTPONE @ POSTPONE 0=
+    POSTPONE OR POSTPONE IF
+        POSTPONE EXECUTE
+    POSTPONE ELSE
+        POSTPONE COMPILE,
+    POSTPONE THEN
+    POSTPONE EXIT
+;
+
 ." *****************************************" CR
 ." * HELLO WORLD!                          *" CR
 ." * FORTH SYSTEM BY github.com/cajwebster *" CR
