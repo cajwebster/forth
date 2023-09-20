@@ -194,6 +194,16 @@ pub fn @"POP-INPUT"(forth: *Forth) noreturn {
     forth.next();
 }
 
+pub fn @"CLEAR-INPUT-STACK"(forth: *Forth) noreturn {
+    forth.input_stack = .{};
+    forth.input_source = .{ .file = .{
+        .line = undefined,
+        .len = 0,
+        .handle = null,
+    } };
+    forth.next();
+}
+
 pub fn PARSE(forth: *Forth) noreturn {
     const c = @as(Char, @truncate(forth.popu()));
     const word = forth.word(c, .no_skip);

@@ -157,6 +157,7 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "R0" },
         .{ .word = "RSP" },
         .{ .word = "!" },
+        .{ .word = "CLEAR-INPUT-STACK" },
 
         .{ .word = "REFILL" },
         .{ .word = "0BRANCH" }, // branch to BYE
