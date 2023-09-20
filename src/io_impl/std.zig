@@ -29,7 +29,7 @@ pub fn format(comptime fmt: []const u8, args: anytype) !void {
 
 pub fn openFile(path: []const u8) !File {
     return if (std.fs.path.isAbsolute(path))
-        std.fs.cwd().openFile(path, .{})
+        std.fs.openFileAbsolute(path, .{})
     else
-        std.fs.openFileAbsolute(path, .{});
+        std.fs.cwd().openFile(path, .{});
 }
