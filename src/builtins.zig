@@ -20,6 +20,9 @@ pub usingnamespace @import("builtins/memory.zig");
 pub usingnamespace @import("builtins/stack.zig");
 pub usingnamespace @import("builtins/variables.zig");
 
+/// ( -- n )
+/// Reads a literal cell value compiled immediately following this word and
+/// pushes it to the stack.
 pub fn LIT(forth: *Forth) noreturn {
     const val: UCell = @intFromPtr(forth.ip[0]);
     forth.pushu(val);
@@ -27,6 +30,9 @@ pub fn LIT(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( -- c-addr u )
+/// Reads the length of the string after this word. The string immediately
+/// follows the length, and the next word is aligned to the nearest cell.
 pub fn LITSTRING(forth: *Forth) noreturn {
     const len = @as(UCell, @intFromPtr(forth.ip[0]));
     forth.ip += 1;
@@ -38,6 +44,9 @@ pub fn LITSTRING(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( c-addr u -- )
+/// If u is greater than zero, display the character string specified by c-addr
+/// and u.
 pub fn TYPE(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
@@ -45,56 +54,84 @@ pub fn TYPE(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( "<spaces>name" -- )
+/// Parses a name delimited by spaces, then creates a new dictionary entry for
+/// that name. When name is executed, the current ip will be pushed to the
+/// return stack, and the vm will start executing the xts that are compiled
+/// immediately after the word was created.
 pub fn @"DOCOL:"(forth: *Forth) noreturn {
     const name = forth.word(' ', .skip_leading);
     forth.add_word(name, Forth.docol, .{});
     forth.next();
 }
 
+/// ( -- )
+/// Same as DOCOL:, but doesn't parse anything and creates a dictionary entry
+/// with no name.
 pub fn @"NONAME-DOCOL:"(forth: *Forth) noreturn {
     forth.add_word("", Forth.docol, .{});
     forth.next();
 }
 
+/// ( "<spaces>name" -- )
+/// Parses a name delimited by spaces, then creates a new dictionary entry for
+/// that name. When name is executed, the name's data field addres will be
+/// pushed to the stack
 pub fn CREATE(forth: *Forth) noreturn {
     const name = forth.word(' ', .skip_leading);
     forth.add_word(name, Forth.docreate, .{});
     forth.next();
 }
 
+/// ( x -- )
+/// Reserve one cell of data space and store x in that cell. In this
+/// implementation, this can be used to compile xts. This will trigger safety
+/// check undefined behaviour if the data space pointer is not aligned.
 pub fn @","(forth: *Forth) noreturn {
     forth.compile_cell(forth.pop());
     forth.next();
 }
 
+/// ( c -- )
+/// Reserve one char of data space and store c in that cell.
 pub fn @"C,"(forth: *Forth) noreturn {
     forth.compile(@truncate(forth.popu()));
     forth.next();
 }
 
+/// ( -- )
+/// Make the most recent dictionary entry an immediate word
 pub fn IMMEDIATE(forth: *Forth) noreturn {
     forth.dict.?.flags.immediate = true;
     forth.next();
 }
 
+/// ( a-addr -- flag )
+/// flag is true if the dictionary entry pointed to by addr is an immediate
+/// word.
 pub fn @"IMMEDIATE?"(forth: *Forth) noreturn {
     const dict_entry = @as(*DictEntry, @ptrFromInt(forth.popu()));
     forth.push(f_bool(dict_entry.flags.immediate));
     forth.next();
 }
 
+/// ( -- )
+/// Toggles the hidden flag for the most recent dictionary entry
 pub fn HIDDEN(forth: *Forth) noreturn {
     forth.dict.?.flags.hidden = !forth.dict.?.flags.hidden;
     forth.next();
 }
 
-/// : IN ( -- flag ) <builtin> ;
-/// returns true if the parse area is non-empty
+/// ( -- flag )
+/// flag is true if the parse area is non-empty
 pub fn @"IN?"(forth: *Forth) noreturn {
     forth.push(f_bool(forth.in < forth.input_buffer.len));
     forth.next();
 }
 
+/// ( i * x "<spaces>name" -- j * x )
+/// Interprets a single word, as described in section 3.4 of the Forth 2012
+/// standard.
 pub fn INTERPRET(forth: *Forth) noreturn {
     const word = forth.word(' ', .skip_leading);
     if (word.len > 0) {
@@ -130,16 +167,22 @@ pub fn INTERPRET(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( -- )
+/// Returns control to the host operating system
 pub fn BYE(forth: *Forth) noreturn {
     forth.bye();
 }
 
+/// ( -- )
+/// Reads on offset after this word, and adds that offset to forth.ip.
 pub fn BRANCH(forth: *Forth) noreturn {
     const offset: UCell = @divExact(@intFromPtr(forth.ip[0]), cell_size);
     forth.ip += offset;
     forth.next();
 }
 
+/// ( flag -- )
+/// Same as branch, but only if flag is false
 pub fn @"0BRANCH"(forth: *Forth) noreturn {
     const offset: UCell = @divExact(@intFromPtr(forth.ip[0]), cell_size);
     if (forth.pop() == 0)
@@ -149,23 +192,32 @@ pub fn @"0BRANCH"(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( -- flag )
+/// Attempts to refill the input buffer. Flag is true if the operation was
+/// successful
 pub fn REFILL(forth: *Forth) noreturn {
     const b = forth.refill();
     forth.push(f_bool(b));
     forth.next();
 }
 
+/// ( c -- )
+/// Displays a single character
 pub fn EMIT(forth: *Forth) noreturn {
     const c: Char = @truncate(forth.popu());
     Forth.io.format("{c}", .{c}) catch forth.die("Error writing to stdout");
     forth.next();
 }
 
+/// ( -- ) ( R: nest-sys -- )
+/// Returns from the current word to the calling word
 pub fn EXIT(forth: *Forth) noreturn {
     forth.ip = @ptrFromInt(forth.rpop());
     forth.next();
 }
 
+/// ( c-addr u -- )
+/// Makes the given string the input source
 pub fn @"STR-INPUT"(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
@@ -177,6 +229,9 @@ pub fn @"STR-INPUT"(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( c-addr u -- )
+/// Opens the file at the path given by c-addr[0..u] and makes it the current
+/// input source.
 pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
@@ -189,11 +244,15 @@ pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( -- )
+/// Returns to the previous input source
 pub fn @"POP-INPUT"(forth: *Forth) noreturn {
     forth.pop_input_source();
     forth.next();
 }
 
+/// ( -- )
+/// Clears the input source stack and sets the input source to stdin
 pub fn @"CLEAR-INPUT-STACK"(forth: *Forth) noreturn {
     forth.input_stack = .{};
     forth.input_source = .{ .file = .{
@@ -204,6 +263,9 @@ pub fn @"CLEAR-INPUT-STACK"(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( char "ccc<char>" -- c-addr u )
+/// Parse ccc delimited by char without skipping leading delimiters. c-addr is
+/// within the input buffer.
 pub fn PARSE(forth: *Forth) noreturn {
     const c = @as(Char, @truncate(forth.popu()));
     const word = forth.word(c, .no_skip);
@@ -212,6 +274,9 @@ pub fn PARSE(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( "<spaces>name<space>" -- c-addr u )
+/// Parse a name delimited by spaces, skipping leading delimiters. c-addr is
+/// within the input buffer.
 pub fn @"PARSE-NAME"(forth: *Forth) noreturn {
     const word = forth.word(' ', .skip_leading);
     forth.pushu(@intFromPtr(word.ptr));
@@ -219,6 +284,8 @@ pub fn @"PARSE-NAME"(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( "str"" -- c-addr u )
+/// Parses a quoted string containing escape characters
 pub fn @"PARSE-S\\\""(forth: *Forth) noreturn {
     const s = blk: {
         if (forth.in >= forth.input_buffer.len) break :blk &.{};
@@ -239,6 +306,8 @@ pub fn @"PARSE-S\\\""(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( "<spaces>name" -- c-addr )
+/// Parses a name and returns the address of a counted string
 pub fn WORD(forth: *Forth) noreturn {
     const S = struct {
         var buffer: [257]u8 = undefined;
@@ -254,6 +323,9 @@ pub fn WORD(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( c-addr -- c-addr 0 | xt 1 | xt -1 )
+/// c-addr is a counted string. Looks up a name in the dictionary and returns
+/// 0 if the word isn't found, 1 if its immediate and -1 if its not.
 pub fn FIND(forth: *Forth) noreturn {
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
     const len = addr[0];
@@ -268,6 +340,8 @@ pub fn FIND(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( i * x xt -- j * x )
+/// Executes xt
 pub fn EXECUTE(forth: *Forth) noreturn {
     forth.next_word = @ptrFromInt(forth.popu());
     @call(.always_tail, forth.next_word[0], .{forth});
@@ -276,11 +350,15 @@ pub fn EXECUTE(forth: *Forth) noreturn {
 var numeric_output_string: [2 * cell_bits + 2]Char = undefined;
 var num_idx: u8 = numeric_output_string.len;
 
+/// ( -- )
+/// Initializes the numeric output string
 pub fn @"<#"(forth: *Forth) noreturn {
     num_idx = numeric_output_string.len;
     forth.next();
 }
 
+/// ( c -- )
+/// Adds a character to the numeric output string
 pub fn HOLD(forth: *Forth) noreturn {
     const c = @as(Char, @truncate(forth.popu()));
     num_idx -= 1;
@@ -288,6 +366,8 @@ pub fn HOLD(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( c-addr u -- )
+/// Adds a string to the numeric output string
 pub fn HOLDS(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
@@ -296,6 +376,8 @@ pub fn HOLDS(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( xd -- c-addr u )
+/// Drops xd and returns the numeric output string
 pub fn @"#>"(forth: *Forth) noreturn {
     _ = forth.popd();
     const s = numeric_output_string[num_idx..];

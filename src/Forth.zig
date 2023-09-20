@@ -99,6 +99,11 @@ pub fn init(self: *Forth) noreturn {
         self.add_word(builtin.name, @field(builtins, builtin.name), .{});
     }
 
+    // : [ ( -- ) \ Enter interpretation state
+    //     FALSE
+    //     STATE
+    //     !
+    // ; IMMEDIATE
     self.compile_word("[", .{ .immediate = true }, &.{
         .{ .word = "LIT" },
         .{ .cell = f_false },
@@ -107,6 +112,11 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "EXIT" },
     });
 
+    // : ] ( -- ) \ Enter compilation state
+    //     TRUE
+    //     STATE
+    //     !
+    // ;
     self.compile_word("]", .{}, &.{
         .{ .word = "LIT" },
         .{ .cell = f_true },
@@ -115,6 +125,11 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "EXIT" },
     });
 
+    // : : ( "<spaces>name" -- ) \ Creates a new dictionary entry for name,
+    //     DOCOL:                \ hides the new entry and starts compiling.
+    //     HIDDEN
+    //     ]
+    // ;
     self.compile_word(":", .{}, &.{
         .{ .word = "DOCOL:" },
         .{ .word = "HIDDEN" },
@@ -122,6 +137,11 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "EXIT" },
     });
 
+    // : ; ( -- ) \ Finishes the compilation of the current word and unhides it.
+    //     POSTPONE EXIT
+    //     HIDDEN
+    //     [
+    // ; IMMEDIATE
     self.compile_word(";", .{ .immediate = true }, &.{
         .{ .word = "LIT" },
         .{ .word = "EXIT" },
@@ -131,6 +151,15 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "EXIT" },
     });
 
+    // : EVALUATE ( i * x c-addr u -- j * x ) \ Interprets a string.
+    //     STR-INPUT
+    //     BEGIN
+    //         IN?
+    //     WHILE
+    //         INTERPRET
+    //     REPEAT
+    //     POP-INPUT
+    // ;
     self.compile_word("EVALUATE", .{}, &.{
         .{ .word = "STR-INPUT" },
 
@@ -145,14 +174,23 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "EXIT" },
     });
 
-    // pseudocode:
-    // rsp = r0
-    // while (refill())
-    //     while (in?())
-    //         interpret()
-    //     if (!compiling)
-    //         print(" OK\n")
-    // bye()
+    // : QUIT ( -- ) ( R: i * x -- ) \ Empties the return stack and starts
+    //     R0 RSP !                  \ interpreting from stdin
+    //     CLEAR-INPUT-STACK
+    //     BEGIN
+    //         REFILL
+    //     WHILE
+    //         BEGIN
+    //             IN?
+    //         WHILE
+    //             INTERPRET
+    //         REPEAT
+    //         STATE @ 0= IF
+    //             ." OK" CR
+    //         THEN
+    //     REPEAT
+    //     BYE
+    // ;
     self.compile_word("QUIT", .{}, &.{
         .{ .word = "R0" },
         .{ .word = "RSP" },
@@ -184,6 +222,10 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "BYE" },
     });
 
+    // : _START \ Interpreter entry point
+    //     S" <contents of forth.f>" EVALUATE
+    //     QUIT
+    // ;
     self.compile_word("_START", .{}, &.{
         .{ .word = "LITSTRING" },
         .{ .string = @embedFile("forth.f") },
