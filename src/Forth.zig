@@ -44,7 +44,7 @@ const InputSource = union(enum) {
     file: struct {
         line: [max_line_len]Char,
         len: UCell,
-        handle: ?io.File,
+        handle: ?io.FileId,
     },
     str: []u8,
 };

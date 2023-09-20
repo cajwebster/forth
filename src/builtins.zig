@@ -239,7 +239,7 @@ pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
     const path = addr[0..len];
     forth.push_input_source();
-    const file = Forth.io.openFile(path) catch forth.die("Error opening file");
+    const file = Forth.io.openFile(path, .ro) catch forth.die("Error opening file");
     forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .handle = file } };
     forth.input_buffer = &.{};
     forth.in = 1;
@@ -516,7 +516,7 @@ pub fn @"SOURCE-ID"(forth: *Forth) noreturn {
         .file => |file| if (file.handle == null)
             0
         else
-            Forth.io.fileId(file.handle.?),
+            file.handle.?,
         .str => -1,
     });
     forth.next();
