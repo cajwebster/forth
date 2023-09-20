@@ -680,6 +680,9 @@ CREATE PAD 256 CHARS ALLOT
 
 : [THEN] ; IMMEDIATE
 
+: CS-PICK PICK ;
+: CS-ROLL ROLL ;
+
 ." *****************************************" CR
 ." * HELLO WORLD!                          *" CR
 ." * FORTH SYSTEM BY github.com/cajwebster *" CR
