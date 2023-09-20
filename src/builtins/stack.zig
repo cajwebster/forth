@@ -5,7 +5,10 @@ const Forth = @import("../Forth.zig");
 const Cell = Forth.Cell;
 
 pub fn DEPTH(forth: *Forth) noreturn {
-    forth.pushu(@divExact(@intFromPtr(forth.sp) - @intFromPtr(&forth.stack[0]), Forth.cell_size));
+    forth.pushu(@divExact(
+        @intFromPtr(forth.sp) - @intFromPtr(&forth.stack[0]),
+        Forth.cell_size,
+    ));
     forth.next();
 }
 
@@ -62,7 +65,8 @@ pub fn ROT(forth: *Forth) noreturn {
 
 pub fn ROLL(forth: *Forth) noreturn {
     const u = forth.popu() + 1;
-    if (@intFromPtr(forth.sp - u) < @intFromPtr(&forth.stack)) forth.die("stack underflow");
+    if (@intFromPtr(forth.sp - u) < @intFromPtr(&forth.stack))
+        forth.die("stack underflow");
     if (u > 1)
         std.mem.rotate(Cell, (forth.sp - u)[0..u], 1);
     forth.next();

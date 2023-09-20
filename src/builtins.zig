@@ -50,7 +50,9 @@ pub fn LITSTRING(forth: *Forth) noreturn {
 pub fn TYPE(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
-    Forth.io.format("{s}", .{addr[0..len]}) catch forth.die("Error writing to stdout");
+    Forth.io.format("{s}", .{addr[0..len]}) catch {
+        forth.die("Error writing to stdout");
+    };
     forth.next();
 }
 
@@ -473,7 +475,13 @@ pub fn @"DOES,"(forth: *Forth) noreturn {
     const latest = forth.dict.?;
 
     latest.codeword = Forth.dodoes;
-    latest.flags.code_offset = @intCast(@as(DCell, @intCast(@intFromPtr(forth.ip))) - @as(DCell, @intCast(@intFromPtr(&latest.codeword))));
+    latest.flags.code_offset = @intCast(@as(
+        DCell,
+        @intCast(@intFromPtr(forth.ip)),
+    ) - @as(
+        DCell,
+        @intCast(@intFromPtr(&latest.codeword)),
+    ));
 
     forth.ip += (len - 1) / Forth.cell_size;
 
@@ -505,7 +513,10 @@ pub fn @"RESTORE-INPUT"(forth: *Forth) noreturn {
 
 pub fn @"SOURCE-ID"(forth: *Forth) noreturn {
     forth.push(switch (forth.input_source) {
-        .file => |file| if (file.handle == null) 0 else @panic("TODO: SOURCE-ID with file input"),
+        .file => |file| if (file.handle == null)
+            0
+        else
+            @panic("TODO: SOURCE-ID with file input"),
         .str => -1,
     });
     forth.next();

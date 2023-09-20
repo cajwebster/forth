@@ -199,7 +199,9 @@ pub fn init(self: *Forth) noreturn {
 
         .{ .word = "REFILL" },
         .{ .word = "0BRANCH" }, // branch to BYE
-        .{ .cell = 18 * cell_size }, // TODO: these offsets won't work with 16-bit cells, since the prompt string would be more than one cell long
+        // TODO: these offsets won't work with 16-bit cells, since the prompt
+        // string would be more than one cell long
+        .{ .cell = 18 * cell_size },
 
         .{ .word = "IN?" },
         .{ .word = "0BRANCH" }, // branch to outer BRANCH
@@ -238,7 +240,9 @@ pub fn init(self: *Forth) noreturn {
     const quit = self.find_word("QUIT").?;
     self.quit = .{@ptrCast(&quit.codeword)};
 
-    const start = [_][*]Codeword{@ptrCast(&self.find_word("_START").?.codeword)};
+    const start = [_][*]Codeword{
+        @ptrCast(&self.find_word("_START").?.codeword),
+    };
     self.ip = &start;
     io.format("Starting...\n", .{}) catch self.die("Error writing to stdout");
     self.next();
@@ -250,7 +254,10 @@ pub fn parseInt(self: *Forth, buf: []const Char) std.fmt.ParseIntError!Cell {
         '#' => std.fmt.parseInt(Cell, buf[1..], 10),
         '$' => std.fmt.parseInt(Cell, buf[1..], 16),
         '%' => std.fmt.parseInt(Cell, buf[1..], 2),
-        '\'' => if (buf.len == 3 and buf[2] == '\'') buf[1] else error.InvalidCharacter,
+        '\'' => if (buf.len == 3 and buf[2] == '\'')
+            buf[1]
+        else
+            error.InvalidCharacter,
         else => std.fmt.parseInt(Cell, buf, @intCast(self.base)),
     };
 }
@@ -266,7 +273,10 @@ pub fn refill(self: *Forth) bool {
     switch (self.input_source) {
         .file => |*file| {
             self.input_buffer = &.{};
-            self.input_buffer = io.readLine(file.handle, &file.line) catch |e| switch (e) {
+            self.input_buffer = io.readLine(
+                file.handle,
+                &file.line,
+            ) catch |e| switch (e) {
                 error.EndOfStream => return false,
                 else => self.die("Error reading from stdin"),
             };
@@ -278,10 +288,18 @@ pub fn refill(self: *Forth) bool {
     }
 }
 
-pub fn word(self: *Forth, delim: Char, trim_leading: enum { skip_leading, no_skip }) []const Char {
+pub fn word(
+    self: *Forth,
+    delim: Char,
+    trim_leading: enum { skip_leading, no_skip },
+) []const Char {
     if (self.in >= self.input_buffer.len) return &.{};
 
-    const delims: []const Char = if (delim == ' ') &std.ascii.whitespace else &.{delim};
+    const delims: []const Char =
+        if (delim == ' ')
+        &std.ascii.whitespace
+    else
+        &.{delim};
 
     var input: []const Char = self.input_buffer[self.in..];
     if (trim_leading == .skip_leading) {
@@ -289,7 +307,8 @@ pub fn word(self: *Forth, delim: Char, trim_leading: enum { skip_leading, no_ski
         input = std.mem.trimLeft(Char, input, delims);
         self.in -= input.len;
     }
-    input = input[0 .. std.mem.indexOfAny(Char, input, delims) orelse input.len];
+    input = input[0 .. std.mem.indexOfAny(Char, input, delims) orelse
+        input.len];
     self.in += input.len + 1;
 
     return input;
@@ -303,12 +322,18 @@ pub fn find_word(self: *const Forth, name: []const Char) ?*DictEntry {
     var curr = self.dict;
     while (curr) |dict_word| : (curr = dict_word.prev) {
         const word_name = std.mem.span(@as([*:0]u8, @ptrCast(&dict_word.name)));
-        if (!dict_word.flags.hidden and std.mem.eql(u8, name, word_name)) return curr;
+        if (!dict_word.flags.hidden and std.mem.eql(u8, name, word_name))
+            return curr;
     }
     return null;
 }
 
-pub fn add_word(self: *Forth, name: []const Char, codeword: Codeword, flags: DictEntry.Flags) void {
+pub fn add_word(
+    self: *Forth,
+    name: []const Char,
+    codeword: Codeword,
+    flags: DictEntry.Flags,
+) void {
     self.here = std.mem.alignPointer(self.here, @alignOf(DictEntry)).?;
     var dict_entry: *DictEntry = @ptrCast(@alignCast(self.here));
     if (name.len > 32) @panic("Word name too long");
@@ -323,12 +348,24 @@ pub fn add_word(self: *Forth, name: []const Char, codeword: Codeword, flags: Dic
     self.dict = dict_entry;
 }
 
-fn compile_word(self: *Forth, name: []const Char, flags: DictEntry.Flags, comptime code: []const union(enum) { word: []const Char, byte: Byte, cell: Cell, string: []const u8 }) void {
+fn compile_word(
+    self: *Forth,
+    name: []const Char,
+    flags: DictEntry.Flags,
+    comptime code: []const union(enum) {
+        word: []const Char,
+        byte: Byte,
+        cell: Cell,
+        string: []const u8,
+    },
+) void {
     self.add_word(name, docol, flags);
     inline for (code) |item| {
         switch (item) {
             .word => |word_name| {
-                const dict_word = self.find_word(word_name) orelse @panic("Word " ++ word_name ++ " not found");
+                const dict_word =
+                    self.find_word(word_name) orelse
+                    @panic("Word " ++ word_name ++ " not found");
                 self.compile_cell(@bitCast(@intFromPtr(&dict_word.codeword)));
             },
             .cell => |cell| self.compile_cell(cell),
@@ -336,7 +373,8 @@ fn compile_word(self: *Forth, name: []const Char, flags: DictEntry.Flags, compti
             .string => |string| {
                 self.compile_cell(string.len);
                 @memcpy(self.here, string);
-                self.here += (string.len + cell_size - 1) / cell_size * cell_size;
+                self.here +=
+                    (string.len + cell_size - 1) / cell_size * cell_size;
             },
         }
     }
@@ -358,13 +396,21 @@ pub fn dodoes(self: *Forth) noreturn {
     self.rpush(@intFromPtr(self.ip));
     self.pushu(@intFromPtr(&self.next_word[1]));
 
-    const dict_entry = @fieldParentPtr(DictEntry, "codeword", &self.next_word[0]);
+    const dict_entry = @fieldParentPtr(
+        DictEntry,
+        "codeword",
+        &self.next_word[0],
+    );
 
     const code_offset = @divExact(dict_entry.flags.code_offset, cell_size);
     if (code_offset >= 0)
-        self.ip = @ptrCast(@alignCast(self.next_word + std.math.absCast(code_offset)))
+        self.ip = @ptrCast(@alignCast(
+            self.next_word + std.math.absCast(code_offset),
+        ))
     else
-        self.ip = @ptrCast(@alignCast(self.next_word - std.math.absCast(code_offset)));
+        self.ip = @ptrCast(@alignCast(
+            self.next_word - std.math.absCast(code_offset),
+        ));
     self.next();
 }
 
@@ -463,7 +509,9 @@ pub fn bye(self: *Forth) noreturn {
 }
 
 pub fn push_input_source(self: *Forth) void {
-    self.input_stack.append(.{ .source = self.input_source, .in = self.in }) catch self.die("Input stack overflow");
+    self.input_stack.append(
+        .{ .source = self.input_source, .in = self.in },
+    ) catch self.die("Input stack overflow");
 }
 
 pub fn pop_input_source(self: *Forth) void {

@@ -50,7 +50,9 @@ pub fn CELLSIZE(forth: *Forth) noreturn {
 }
 
 pub fn UNUSED(forth: *Forth) noreturn {
-    forth.pushu(Forth.mem_size - (@intFromPtr(forth.here) - @intFromPtr(&forth.mem)));
+    forth.pushu(
+        Forth.mem_size - (@intFromPtr(forth.here) - @intFromPtr(&forth.mem)),
+    );
     forth.next();
 }
 
