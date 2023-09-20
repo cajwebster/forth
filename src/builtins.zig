@@ -516,7 +516,7 @@ pub fn @"SOURCE-ID"(forth: *Forth) noreturn {
         .file => |file| if (file.handle == null)
             0
         else
-            @panic("TODO: SOURCE-ID with file input"),
+            Forth.io.fileId(file.handle.?),
         .str => -1,
     });
     forth.next();

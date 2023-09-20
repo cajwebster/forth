@@ -4,6 +4,10 @@ const Forth = @import("../Forth.zig");
 
 pub const File = std.fs.File;
 
+pub fn fileId(file: File) Forth.Cell {
+    return @intCast(file.handle);
+}
+
 pub fn readChar() !Forth.Char {
     return std.io.getStdIn().reader().readByte();
 }

@@ -728,6 +728,28 @@ CREATE PAD 256 CHARS ALLOT
     POSTPONE EXIT
 ;
 
+: (
+    SOURCE-ID 0> IF
+        \ reading from file
+        BEGIN
+            IN? INVERT IF
+                REFILL INVERT IF
+                    EXIT
+                THEN
+            THEN
+            ')' PARSE 2DUP + SOURCE OVER + WITHIN IF
+                + C@ ')' = IF
+                    EXIT
+                THEN
+            ELSE
+                2DROP
+            THEN
+        AGAIN
+    ELSE
+        POSTPONE (
+    THEN
+; IMMEDIATE
+
 ." *****************************************" CR
 ." * HELLO WORLD!                          *" CR
 ." * FORTH SYSTEM BY github.com/cajwebster *" CR
