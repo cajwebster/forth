@@ -1,4 +1,4 @@
-const Forth = @import("../Forth.zig");
+const Forth = @import("../../Forth.zig");
 
 pub fn STATE(forth: *Forth) noreturn {
     forth.pushu(@intFromPtr(&forth.state));

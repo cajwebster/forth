@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const Forth = @import("../Forth.zig");
+const Forth = @import("../../Forth.zig");
 
 const Cell = Forth.Cell;
 const DCell = Forth.DCell;

@@ -9,6 +9,27 @@ const FileMode = io.FileMode;
 const ior_success = 0;
 const ior_fail = -1;
 
+/// ( c-addr u -- )
+/// Opens the file at the path given by c-addr[0..u] and makes it the current
+/// input source.
+pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
+    const len = forth.popu();
+    const addr = @as([*]u8, @ptrFromInt(forth.popu()));
+    const path = addr[0..len];
+    forth.push_input_source();
+    const file = Forth.io.openFile(path, .ro) catch forth.die("Error opening file");
+    forth.input_source = .{ .file = .{
+        .line = undefined,
+        .line_len = 0,
+        .line_start = 0,
+        .line_end = 0,
+        .handle = file,
+    } };
+    forth.input_buffer = &.{};
+    forth.in = 1;
+    forth.next();
+}
+
 /// ( -- fam )
 /// pushes the file access method for opening files in read/write mode
 pub fn @"R/W"(forth: *Forth) noreturn {

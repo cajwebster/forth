@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const Forth = @import("../Forth.zig");
+const Forth = @import("../../Forth.zig");
 
 const f_bool = Forth.f_bool;
 const Cell = Forth.Cell;
@@ -81,7 +81,24 @@ pub fn MOVE(forth: *Forth) noreturn {
     forth.next();
 }
 
-pub fn COMPARE(forth: *Forth) noreturn {
+/// ( x -- )
+/// Reserve one cell of data space and store x in that cell. In this
+/// implementation, this can be used to compile xts. This will trigger safety
+/// check undefined behaviour if the data space pointer is not aligned.
+pub fn @","(forth: *Forth) noreturn {
+    forth.compile_cell(forth.pop());
+    forth.next();
+}
+
+/// ( c -- )
+/// Reserve one char of data space and store c in that cell.
+pub fn @"C,"(forth: *Forth) noreturn {
+    forth.compile(@truncate(forth.popu()));
+    forth.next();
+}
+
+/// ( c-addr1 u1 c-addr2 u2 -- flag )
+pub fn @"S="(forth: *Forth) noreturn {
     const len2 = forth.popu();
     const addr2 = @as([*]u8, @ptrFromInt(forth.popu()));
     const s2 = addr2[0..len2];

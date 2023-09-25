@@ -5,6 +5,11 @@ pub const forth_cfg = Forth.Cfg{
     .mem_size = 1024 * 1024,
     .stack_size = 1024,
     .max_line_len = 128,
+    .optional_wordsets = .{
+        .file = true,
+        .tools = true,
+        .string = true,
+    },
 };
 
 var f = Forth{};

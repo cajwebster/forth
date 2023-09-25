@@ -1,7 +1,7 @@
 const std = @import("std");
 const root = @import("root");
 
-const cfg = if (@hasDecl(root, "forth_cfg")) root.forth_cfg else Cfg{};
+pub const cfg = if (@hasDecl(root, "forth_cfg")) root.forth_cfg else Cfg{};
 
 const builtins = @import("builtins.zig");
 pub const io = @import("io.zig");
@@ -99,7 +99,8 @@ pub fn init(self: *Forth) noreturn {
     self.rng.seed(@bitCast(std.time.timestamp()));
 
     inline for (@typeInfo(builtins).Struct.decls) |builtin| {
-        self.add_word(builtin.name, @field(builtins, builtin.name), .{});
+        if (@typeInfo(@TypeOf(@field(builtins, builtin.name))) == .Fn)
+            self.add_word(builtin.name, @field(builtins, builtin.name), .{});
     }
 
     // : [ ( -- ) \ Enter interpretation state
@@ -231,12 +232,30 @@ pub fn init(self: *Forth) noreturn {
     //     S" <contents of forth.f>" EVALUATE
     //     QUIT
     // ;
-    self.compile_word("_START", .{}, &.{
+    self.compile_word("_START", .{}, &(.{
         .{ .word = "LITSTRING" },
-        .{ .string = @embedFile("forth.f") },
+        .{ .string = @embedFile("words/core.f") },
+        .{ .word = "EVALUATE" },
+    } ++
+        (if (cfg.optional_wordsets.file) .{
+        .{ .word = "LITSTRING" },
+        .{ .string = @embedFile("words/file.f") },
+        .{ .word = "EVALUATE" },
+    } else .{}) ++ (if (cfg.optional_wordsets.tools) .{
+        .{ .word = "LITSTRING" },
+        .{ .string = @embedFile("words/tools.f") },
+        .{ .word = "EVALUATE" },
+    } else .{}) ++ (if (cfg.optional_wordsets.string) .{
+        .{ .word = "LITSTRING" },
+        .{ .string = @embedFile("words/string.f") },
+        .{ .word = "EVALUATE" },
+    } else .{}) ++
+        .{
+        .{ .word = "LITSTRING" },
+        .{ .string = @embedFile("start.f") },
         .{ .word = "EVALUATE" },
         .{ .word = "QUIT" },
-    });
+    }));
 
     self.lit = &self.find_word("LIT").?.codeword;
 
