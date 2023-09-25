@@ -39,11 +39,7 @@
     BEGIN
         REFILL
     WHILE
-        BEGIN
-            IN?
-        WHILE
-            INTERPRET
-        REPEAT
+        INTERPRET
     REPEAT
 
     POP-INPUT

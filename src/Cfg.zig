@@ -11,7 +11,6 @@ max_line_len: usize = 80,
 optional_wordsets: struct {
     block: bool = false,
     double: bool = false,
-    exception: bool = false,
     facility: bool = false,
     file: bool = false,
     float: bool = false,

@@ -236,11 +236,10 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "LITSTRING" },
         .{ .string = @embedFile("words/core.f") },
         .{ .word = "EVALUATE" },
-    } ++ (if (cfg.optional_wordsets.exception) .{
         .{ .word = "LITSTRING" },
         .{ .string = @embedFile("words/exception.f") },
         .{ .word = "EVALUATE" },
-    } else .{}) ++
+    } ++
         (if (cfg.optional_wordsets.file) .{
         .{ .word = "LITSTRING" },
         .{ .string = @embedFile("words/file.f") },
