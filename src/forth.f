@@ -249,8 +249,6 @@
     DUP @ ROT + SWAP !
 ;
 
-CREATE S"-BUFFER 256 ALLOT
-
 : CMOVE ( c-addr1 c-addr2 u -- )
     BEGIN
         DUP 0>
@@ -262,6 +260,18 @@ CREATE S"-BUFFER 256 ALLOT
         ROT 1 -
     REPEAT
     2DROP DROP
+;
+
+2 CONSTANT NUM-S"-BUFFERS
+256 CONSTANT S"-BUFFER-SIZE
+VARIABLE S"-BUFFER-IDX 0 S"-BUFFER-IDX !
+CREATE S"-BUFFER[] S"-BUFFER-SIZE NUM-S"-BUFFERS * ALLOT
+: S"-BUFFER ( -- c-addr )
+    S"-BUFFER[] S"-BUFFER-IDX @ S"-BUFFER-SIZE * +
+;
+: NEXT-S"-BUFFER ( -- )
+    S"-BUFFER-IDX @ 1+ NUM-S"-BUFFERS MOD
+    S"-BUFFER-IDX !
 ;
 
 : S"
@@ -285,28 +295,9 @@ CREATE S"-BUFFER 256 ALLOT
         TUCK S"-BUFFER SWAP
         CMOVE
         S"-BUFFER SWAP
+        NEXT-S"-BUFFER
     THEN
 ; IMMEDIATE
-
-: INCLUDED
-    FILE-INPUT
-
-    BEGIN
-        REFILL
-    WHILE
-        BEGIN
-            IN?
-        WHILE
-            INTERPRET
-        REPEAT
-    REPEAT
-
-    POP-INPUT
-;
-
-: INCLUDE
-    PARSE-NAME INCLUDED
-;
 
 : RECURSE
     LATEST @ >CFA ,
@@ -502,6 +493,73 @@ CREATE S"-BUFFER 256 ALLOT
     THEN
 ; IMMEDIATE
 
+\ Linked list of already included files
+0 VALUE INCLUDED-LIST
+
+: APPEND-INCLUDED ( c-addr u -- )
+    ALIGN
+    \ set included-list to HERE and compile a link to the previous entry
+    HERE INCLUDED-LIST , TO INCLUDED-LIST
+    \ compile len
+    DUP C,
+    BEGIN
+        ?DUP
+    WHILE
+        SWAP DUP C@ C, 1 CHARS +
+        SWAP 1-
+    REPEAT
+    DROP
+;
+
+: INCLUDED? ( c-addr u -- flag)
+    INCLUDED-LIST
+    BEGIN
+        ?DUP
+    WHILE
+        DUP 1 CELLS +   ( c-addr1 u curr c-addr2 )
+        2SWAP ROT COUNT ( curr c-addr1 u1 c-addr2 u2 )
+        2OVER COMPARE IF
+            2DROP DROP TRUE
+            EXIT
+        THEN
+        ROT @
+    REPEAT
+    2DROP FALSE
+;
+
+: INCLUDED ( i * x c-addr u -- j * x )
+    2DUP APPEND-INCLUDED
+    FILE-INPUT
+
+    BEGIN
+        REFILL
+    WHILE
+        BEGIN
+            IN?
+        WHILE
+            INTERPRET
+        REPEAT
+    REPEAT
+
+    POP-INPUT
+;
+
+: INCLUDE
+    PARSE-NAME INCLUDED
+;
+
+: REQUIRED ( i * x c-addr u -- j * x )
+    2DUP INCLUDED? INVERT IF
+        INCLUDED
+    ELSE
+        2DROP
+    THEN
+;
+
+: REQUIRE ( i * x "name" -- j * x )
+    PARSE-NAME REQUIRED
+;
+
 : CASE
     0
 ; IMMEDIATE
@@ -598,6 +656,58 @@ CREATE PAD 256 CHARS ALLOT
     THEN
 ; IMMEDIATE
 
+: S\"-NEXT ( c-addr1 u1 -- c-addr2 u2 c )
+    OVER C@ ( c-addr u c )
+    DUP '\' = IF
+        DROP            ( c-addr u )
+        1 CHARS -       ( c-addr u )
+        SWAP CHAR+      ( u c-addr )
+        DUP C@ CASE     ( u c-addr c )
+            'a' OF 07 ENDOF     \ alert
+            'b' OF 08 ENDOF     \ backspace
+            'e' OF 27 ENDOF     \ escape
+            'f' OF 12 ENDOF     \ form feed
+            'l' OF 10 ENDOF     \ line feed
+            'm' OF -1 ENDOF     \ cr-lf
+            'n' OF 10 ENDOF     \ newline
+            'q' OF 34 ENDOF     \ double-quote
+            'r' OF 13 ENDOF     \ carriage return
+            't' OF 09 ENDOF     \ horizontal tab
+            'v' OF 11 ENDOF     \ vertical tab
+            'z' OF 00 ENDOF     \ null
+            '"' OF 34 ENDOF     \ double-quote
+            '\' OF 92 ENDOF     \ backslash
+            'x' OF
+                CHAR+                           ( u c-addr )
+                SWAP 1 CHARS -                  ( c-addr u )
+                BASE @ >R                       ( c-addr u ) ( R: base )
+                HEX
+                0 0 3 PICK 2 >NUMBER 2DROP DROP ( c-addr u c ) ( R: base )
+                R> BASE !                       ( c-addr u c)
+                ROT CHAR+                       ( u c c-addr )
+                ROT 1 CHARS -                   ( c c-addr u )
+                SWAP ROT                        ( u c-addr c )
+            ENDOF
+        ENDCASE
+        >R SWAP R>  ( c-addr u c )
+    THEN
+    ROT CHAR+
+    ROT 1-
+    ROT
+;
+
+2 CONSTANT NUM-S\"-BUFFERS
+256 CONSTANT S\"-BUFFER-SIZE
+VARIABLE S\"-BUFFER-IDX 0 S\"-BUFFER-IDX !
+CREATE S\"-BUFFER[] S\"-BUFFER-SIZE NUM-S\"-BUFFERS * ALLOT
+: S\"-BUFFER ( -- c-addr )
+    S\"-BUFFER[] S\"-BUFFER-IDX @ S\"-BUFFER-SIZE * +
+;
+: NEXT-S\"-BUFFER ( -- )
+    S\"-BUFFER-IDX @ 1+ NUM-S\"-BUFFERS MOD
+    S\"-BUFFER-IDX !
+;
+
 : S\"
     PARSE-S\"
     STATE @ IF
@@ -606,52 +716,39 @@ CREATE PAD 256 CHARS ALLOT
         0 ,
         ROT ROT        ( len-addr s-addr s-len )
         BEGIN
-            ?DUP 0>
+            ?DUP
         WHILE
-            OVER C@ ( len-addr s-addr s-len c )
-            DUP '\' = IF
-                DROP        ( len-addr s-addr s-len )
-                1 CHARS -   ( len-addr s-addr s-len )
-                SWAP CHAR+  ( len-addr s-len s-addr )
-                DUP C@ CASE
-                    'a' OF 07 C, ENDOF          \ alert
-                    'b' OF 08 C, ENDOF          \ backspace
-                    'e' OF 27 C, ENDOF          \ escape
-                    'f' OF 12 C, ENDOF          \ form feed
-                    'l' OF 10 C, ENDOF          \ line feed
-                    'm' OF 13 C, 10 C, ENDOF    \ cr/lf
-                    'n' OF 10 C, ENDOF          \ newline
-                    'q' OF 34 C, ENDOF          \ double-quote
-                    'r' OF 13 C, ENDOF          \ carriage return
-                    't' OF 09 C, ENDOF          \ horizontal tab
-                    'v' OF 11 C, ENDOF          \ vertical tab
-                    'z' OF 00 C, ENDOF          \ null
-                    '"' OF 34 C, ENDOF          \ double-quote
-                    '\' OF 92 C, ENDOF          \ backslash
-                    'x' OF
-                        CHAR+
-                        SWAP 1 CHARS - SWAP
-                        BASE @ >R
-                        HEX
-                        0 0 2 PICK 2 >NUMBER 2DROP DROP C,
-                        R> BASE !
-                        CHAR+
-                        SWAP 1 CHARS - SWAP
-                    ENDOF
-                ENDCASE
-                SWAP
+            S\"-NEXT DUP -1 = IF
+                DROP
+                13 C, 10 C,
             ELSE
                 C,
             THEN
-            1 CHARS -
-            SWAP CHAR+ SWAP
         REPEAT
         DROP                    ( len-addr )
         HERE OVER - 1 CELLS -   ( len-addr len )
         SWAP !
         ALIGN
     ELSE
-        2DROP
+        S\"-BUFFER ROT ROT  ( b-addr s-addr len )
+        BEGIN
+            ?DUP
+        WHILE
+            S\"-NEXT        ( b-addr s-addr len c )
+            ROT ROT 2>R     ( b-addr c ) ( R: s-addr len )
+            DUP -1 = IF
+                DROP
+                13 OVER C!
+                CHAR+
+                10 OVER C!
+            ELSE
+                OVER C!         ( b-addr ) ( R: s-addr len )
+            THEN
+            CHAR+ 2R>       ( b-addr s-addr len )
+        REPEAT
+        DROP S\"-BUFFER ( end start )
+        SWAP OVER -     ( start len )
+        NEXT-S\"-BUFFER
     THEN
 ; IMMEDIATE
 
@@ -749,6 +846,13 @@ CREATE PAD 256 CHARS ALLOT
         POSTPONE (
     THEN
 ; IMMEDIATE
+
+: /STRING ( c-addr_1 u_1 n -- c-addr_2 u_2 )
+    ROT OVER CHARS +    ( u_1 n c-addr_2 )
+    ROT ROT -           ( c-addr_2 u_2 )
+;
+
+: BIN ( fam_1 -- fam_2 ) ;
 
 ." *****************************************" CR
 ." * HELLO WORLD!                          *" CR

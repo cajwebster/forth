@@ -13,8 +13,11 @@ Currently implements the entire core word set.
 - [X] Core words
 - [X] Core extension words
 - [ ] Comptime minimization of src/forth.f
-- [X] Comptime configuration of VM
-- [X] Move I/O to seperate module
+- [ ] Comptime configuration of VM
+  - [ ] Conditional compilation of optional word sets
+    - [ ] Split forth.f into multiple files
+- [ ] Move I/O to seperate module
+  - [ ] io.zig should throw a compile error if function signatures are incorrect
 - [ ] Port to Raspberry Pi Pico
 - [ ] Block access words
 - [ ] Programming tools

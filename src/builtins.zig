@@ -16,6 +16,7 @@ const cell_size = Forth.cell_size;
 const f_bool = Forth.f_bool;
 
 pub usingnamespace @import("builtins/arithmetic.zig");
+pub usingnamespace @import("builtins/file.zig");
 pub usingnamespace @import("builtins/memory.zig");
 pub usingnamespace @import("builtins/stack.zig");
 pub usingnamespace @import("builtins/variables.zig");
@@ -50,7 +51,7 @@ pub fn LITSTRING(forth: *Forth) noreturn {
 pub fn TYPE(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
-    Forth.io.format("{s}", .{addr[0..len]}) catch {
+    Forth.io.format(null, "{s}", .{addr[0..len]}) catch {
         forth.die("Error writing to stdout");
     };
     forth.next();
@@ -144,15 +145,15 @@ pub fn INTERPRET(forth: *Forth) noreturn {
             } else {
                 forth.compile_cell(@bitCast(@intFromPtr(&dict_entry.codeword)));
             }
-        } else if (forth.parseInt(word) catch null) |num| {
+        } else if (forth.parseInt(word)) |num| {
             if (forth.state == 0) {
                 forth.push(num);
             } else {
                 forth.compile_cell(@bitCast(@intFromPtr(forth.lit)));
                 forth.compile_cell(num);
             }
-        } else {
-            Forth.io.format(" '{s}'?\n", .{word}) catch forth.die("Error writing to stdout");
+        } else |_| {
+            Forth.io.format(null, " '{s}'?\n", .{word}) catch forth.die("Error writing to stdout");
             if (forth.state != 0) {
                 // remove the word currently being compiled from the dictionary
                 // and return to interpretation state
@@ -161,7 +162,7 @@ pub fn INTERPRET(forth: *Forth) noreturn {
             }
             forth.ip = &forth.quit;
             forth.input_stack = .{};
-            forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .handle = null } };
+            forth.input_source = .{ .stdin = undefined };
             forth.in = 0;
             forth.next();
         }
@@ -207,7 +208,7 @@ pub fn REFILL(forth: *Forth) noreturn {
 /// Displays a single character
 pub fn EMIT(forth: *Forth) noreturn {
     const c: Char = @truncate(forth.popu());
-    Forth.io.format("{c}", .{c}) catch forth.die("Error writing to stdout");
+    Forth.io.format(null, "{c}", .{c}) catch forth.die("Error writing to stdout");
     forth.next();
 }
 
@@ -240,7 +241,13 @@ pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
     const path = addr[0..len];
     forth.push_input_source();
     const file = Forth.io.openFile(path, .ro) catch forth.die("Error opening file");
-    forth.input_source = .{ .file = .{ .line = undefined, .len = 0, .handle = file } };
+    forth.input_source = .{ .file = .{
+        .line = undefined,
+        .line_len = 0,
+        .line_start = 0,
+        .line_end = 0,
+        .handle = file,
+    } };
     forth.input_buffer = &.{};
     forth.in = 1;
     forth.next();
@@ -257,11 +264,7 @@ pub fn @"POP-INPUT"(forth: *Forth) noreturn {
 /// Clears the input source stack and sets the input source to stdin
 pub fn @"CLEAR-INPUT-STACK"(forth: *Forth) noreturn {
     forth.input_stack = .{};
-    forth.input_source = .{ .file = .{
-        .line = undefined,
-        .len = 0,
-        .handle = null,
-    } };
+    forth.input_source = .{ .stdin = undefined };
     forth.next();
 }
 
@@ -495,28 +498,79 @@ pub fn @">BODY"(forth: *Forth) noreturn {
     forth.next();
 }
 
+/// ( -- x_n ... x_1 n )
 pub fn @"SAVE-INPUT"(forth: *Forth) noreturn {
-    forth.push_input_source();
-    forth.pushu(forth.input_stack.len - 1);
-    forth.pushu(1);
+    switch (forth.input_source) {
+        .stdin => forth.push(0),
+        .file => |file| {
+            forth.pushud(file.line_end);
+            forth.pushud(file.line_start);
+            forth.pushu(forth.in);
+            forth.push(file.handle);
+            forth.push(6);
+        },
+        .str => |str| {
+            forth.pushu(@intFromPtr(str.ptr));
+            forth.pushu(str.len);
+            forth.pushu(forth.in);
+            forth.push(3);
+        },
+    }
     forth.next();
 }
 
+/// ( x_n ... x_1 n -- flag )
 pub fn @"RESTORE-INPUT"(forth: *Forth) noreturn {
-    _ = forth.popu();
-    const idx = forth.popu();
-    const input_source = forth.input_stack.orderedRemove(idx);
-    forth.restore_input_source(input_source);
-    forth.push(f_bool(false));
+    const num_args = forth.popu();
+    switch (num_args) {
+        6 => {
+            const handle = forth.pop();
+            const in = forth.popu();
+            const line_start = forth.popud();
+            const line_end = forth.popud();
+            if (forth.input_source == .file and
+                forth.input_source.file.handle == handle)
+            {
+                Forth.io.fileSeek(handle, line_start) catch unreachable;
+                forth.input_buffer = Forth.io.readLine(
+                    handle,
+                    &forth.input_source.file.line,
+                ) catch unreachable;
+                forth.input_source.file.line_start = line_start;
+                forth.input_source.file.line_end = line_end;
+                forth.in = in;
+                forth.push(f_bool(false));
+            } else {
+                forth.push(f_bool(true));
+            }
+        },
+        3 => {
+            const in = forth.popu();
+            const len = forth.popu();
+            const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
+            if (forth.input_source == .str and
+                forth.input_source.str.ptr == addr and
+                forth.input_source.str.len == len)
+            {
+                forth.in = in;
+                forth.push(f_bool(false));
+            } else {
+                forth.push(f_bool(true));
+            }
+        },
+        else => {
+            for (0..num_args) |_| _ = forth.pop();
+            forth.push(f_bool(true));
+        },
+    }
     forth.next();
 }
 
+/// ( -- 0 | -1 | fileid )
 pub fn @"SOURCE-ID"(forth: *Forth) noreturn {
     forth.push(switch (forth.input_source) {
-        .file => |file| if (file.handle == null)
-            0
-        else
-            file.handle.?,
+        .stdin => 0,
+        .file => |file| file.handle,
         .str => -1,
     });
     forth.next();

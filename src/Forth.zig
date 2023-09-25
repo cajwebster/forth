@@ -41,14 +41,20 @@ pub const DictEntry = extern struct {
 
 pub const max_line_len = cfg.max_line_len;
 const InputSource = union(enum) {
+    stdin: struct {
+        line: [max_line_len]Char,
+        line_len: UCell,
+    },
     file: struct {
         line: [max_line_len]Char,
-        len: UCell,
-        handle: ?io.FileId,
+        line_len: UCell,
+        line_start: UDCell,
+        line_end: UDCell,
+        handle: io.FileId,
     },
     str: []u8,
 };
-const InputStackItem = struct {
+pub const InputStackItem = struct {
     source: InputSource,
     in: UCell,
 };
@@ -74,9 +80,9 @@ lsp: [*]UCell = undefined,
 ip: [*]const [*]const Codeword = undefined,
 next_word: [*]const Codeword = undefined,
 
-input_source: InputSource = .{ .file = undefined },
+input_source: InputSource = .{ .stdin = undefined },
 input_stack: InputStack = InputStack{},
-input_buffer: []u8 = undefined,
+input_buffer: []u8 = &.{},
 in: UCell = 0,
 
 lit: *const Codeword = undefined,
@@ -89,9 +95,6 @@ pub fn init(self: *Forth) noreturn {
     self.sp = &self.stack;
     self.rsp = &self.rstack;
     self.lsp = &self.leavestack;
-
-    self.input_source.file.handle = null;
-    self.input_buffer = self.input_source.file.line[0..1];
 
     self.rng.seed(@bitCast(std.time.timestamp()));
 
@@ -244,7 +247,7 @@ pub fn init(self: *Forth) noreturn {
         @ptrCast(&self.find_word("_START").?.codeword),
     };
     self.ip = &start;
-    io.format("Starting...\n", .{}) catch self.die("Error writing to stdout");
+    io.format(null, "Starting...\n", .{}) catch self.die("Error writing to stdout");
     self.next();
 }
 
@@ -271,17 +274,34 @@ pub fn key(self: *Forth) Cell {
 
 pub fn refill(self: *Forth) bool {
     switch (self.input_source) {
-        .file => |*file| {
+        .stdin => |*stdin| {
             self.input_buffer = &.{};
             self.input_buffer = io.readLine(
-                file.handle,
-                &file.line,
+                null,
+                &stdin.line,
             ) catch |e| switch (e) {
                 error.EndOfStream => return false,
                 else => self.die("Error reading from stdin"),
             };
             self.in = 0;
-            file.len = self.input_buffer.len;
+            stdin.line_len = self.input_buffer.len;
+            return true;
+        },
+        .file => |*file| {
+            self.input_buffer = &.{};
+            file.line_start = io.filePosition(file.handle) catch
+                self.die("Error getting file position");
+            self.input_buffer = io.readLine(
+                file.handle,
+                &file.line,
+            ) catch |e| switch (e) {
+                error.EndOfStream => return false,
+                else => self.die("Error reading from file"),
+            };
+            self.in = 0;
+            file.line_len = self.input_buffer.len;
+            file.line_end = io.filePosition(file.handle) catch
+                self.die("Error getting file position");
             return true;
         },
         .str => return false,
@@ -499,19 +519,26 @@ pub fn compile_cell(self: *Forth, val: Cell) void {
 
 pub fn die(self: *Forth, msg: []const u8) noreturn {
     _ = self;
-    io.format("\nFatal error: {s}\n", .{msg}) catch {};
+    io.format(null, "\nFatal error: {s}\n", .{msg}) catch {};
     std.process.exit(1);
 }
 
 pub fn bye(self: *Forth) noreturn {
-    io.format("\nGoodbye.\n", .{}) catch self.die("Could not write to stdout");
+    io.format(null, "\nGoodbye.\n", .{}) catch self.die("Could not write to stdout");
     std.process.exit(0);
 }
 
 pub fn push_input_source(self: *Forth) void {
     self.input_stack.append(
-        .{ .source = self.input_source, .in = self.in },
+        self.save_input_source(),
     ) catch self.die("Input stack overflow");
+}
+
+pub fn save_input_source(self: *Forth) InputStackItem {
+    return .{
+        .source = self.input_source,
+        .in = self.in,
+    };
 }
 
 pub fn pop_input_source(self: *Forth) void {
@@ -523,7 +550,14 @@ pub fn restore_input_source(self: *Forth, source: InputStackItem) void {
     self.input_source = source.source;
     self.in = source.in;
     switch (self.input_source) {
-        .file => |*file| self.input_buffer = file.line[0..file.len],
+        .stdin => |*stdin| {
+            self.input_buffer = stdin.line[0..stdin.line_len];
+        },
+        .file => |*file| {
+            self.input_buffer = file.line[0..file.line_len];
+            io.fileSeek(file.handle, file.line_end) catch
+                self.die("Error setting file position");
+        },
         .str => |s| self.input_buffer = s,
     }
 }
