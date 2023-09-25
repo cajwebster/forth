@@ -27,9 +27,21 @@ pub fn @"STR-INPUT"(forth: *Forth) noreturn {
 }
 
 /// ( -- )
+pub fn @"PUSH-INPUT"(forth: *Forth) noreturn {
+    forth.push_input_source();
+    forth.next();
+}
+
+/// ( -- )
 /// Returns to the previous input source
 pub fn @"POP-INPUT"(forth: *Forth) noreturn {
     forth.pop_input_source();
+    forth.next();
+}
+
+/// ( -- )
+pub fn @"DROP-INPUT"(forth: *Forth) noreturn {
+    _ = forth.input_stack.pop();
     forth.next();
 }
 
@@ -173,6 +185,19 @@ pub fn @"PARSE-NAME"(forth: *Forth) noreturn {
     const word = forth.word(' ', .skip_leading);
     forth.pushu(@intFromPtr(word.ptr));
     forth.pushu(word.len);
+    forth.next();
+}
+
+/// ( c-addr u -- n true | false )
+pub fn @"PARSE-NUM"(forth: *Forth) noreturn {
+    const len = forth.popu();
+    const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
+    if (forth.parseInt(addr[0..len])) |n| {
+        forth.push(n);
+        forth.push(f_bool(true));
+    } else |_| {
+        forth.push(f_bool(false));
+    }
     forth.next();
 }
 

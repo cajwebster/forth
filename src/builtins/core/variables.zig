@@ -35,6 +35,16 @@ pub fn RSP(forth: *Forth) noreturn {
     forth.next();
 }
 
+pub fn SP(forth: *Forth) noreturn {
+    forth.pushu(@intFromPtr(&forth.sp));
+    forth.next();
+}
+
+pub fn @"INPUT-SP"(forth: *Forth) noreturn {
+    forth.pushu(@intFromPtr(&forth.input_stack.len));
+    forth.next();
+}
+
 pub fn SOURCE(forth: *Forth) noreturn {
     forth.pushu(@intFromPtr(forth.input_buffer.ptr));
     forth.pushu(forth.input_buffer.len);

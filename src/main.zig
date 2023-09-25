@@ -6,6 +6,7 @@ pub const forth_cfg = Forth.Cfg{
     .stack_size = 1024,
     .max_line_len = 128,
     .optional_wordsets = .{
+        .exception = true,
         .file = true,
         .tools = true,
         .string = true,
