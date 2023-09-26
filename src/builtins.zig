@@ -20,3 +20,7 @@ pub usingnamespace if (Forth.cfg.optional_wordsets.file)
     @import("builtins/file.zig")
 else
     struct {};
+pub usingnamespace if (Forth.cfg.optional_wordsets.string)
+    @import("builtins/string.zig")
+else
+    struct {};
