@@ -104,7 +104,7 @@ VARIABLE ABORT"-LEN
     WHILE
         ['] INTERPRET CATCH
         CASE
-            0 OF STATE @ 0= IF ." OK" CR THEN ENDOF
+            0 OF STATE @ 0= IF ."  OK" CR THEN ENDOF
             POSTPONE [
             DECIMAL
             -1 OF ENDOF
