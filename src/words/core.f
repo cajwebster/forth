@@ -442,7 +442,7 @@ CREATE S\"-BUFFER[] S\"-BUFFER-SIZE NUM-S\"-BUFFERS * ALLOT
 : #S ( ud1 -- ud2 )
     BEGIN
         #
-        2DUP D0=
+        2DUP OR 0=
     UNTIL
 ;
 

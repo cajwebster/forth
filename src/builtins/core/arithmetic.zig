@@ -184,12 +184,6 @@ pub fn @"UD/MOD"(forth: *Forth) noreturn {
     forth.next();
 }
 
-pub fn @"D0="(forth: *Forth) noreturn {
-    const n = forth.popd();
-    forth.push(f_bool(n == 0));
-    forth.next();
-}
-
 pub fn @"M*"(forth: *Forth) noreturn {
     const n2 = forth.pop();
     const n1 = forth.pop();

@@ -48,19 +48,6 @@ VARIABLE ABORT"-LEN
     THEN
 ; IMMEDIATE
 
-: .S
-    ." ( "
-    DEPTH
-    BEGIN
-        DUP 0>
-    WHILE
-        DUP PICK .
-        1 -
-    REPEAT
-    DROP
-    ." )" CR
-;
-
 : INTERPRET
     BEGIN
         IN?
@@ -76,14 +63,26 @@ VARIABLE ABORT"-LEN
             ELSE
                 COUNT                       ( c-addr u )
                 2DUP PARSE-NUM              ( c-addr u ?num flag )
-                IF
-                    STATE @ IF              ( c-addr u num )
-                        POSTPONE LITERAL    ( c-addr u )
-                        2DROP               ( )
-                    ELSE
-                        ROT ROT             ( num c-addr u )
-                        2DROP               ( num )
-                    THEN
+                ?DUP IF
+                    CASE
+                        1 OF
+                            STATE @ IF              ( c-addr u num )
+                                POSTPONE LITERAL    ( c-addr u )
+                                2DROP               ( )
+                            ELSE
+                                ROT ROT             ( num c-addr u )
+                                2DROP               ( num )
+                            THEN
+                        ENDOF
+                        -1 OF
+                            STATE @ IF              ( c-addr u d )
+                                SWAP POSTPONE LITERAL POSTPONE LITERAL
+                                2DROP
+                            ELSE
+                                2>R 2DROP 2R>
+                            THEN
+                        ENDOF
+                    ENDCASE
                 ELSE
                     TYPE '?' EMIT CR
                     -13 THROW

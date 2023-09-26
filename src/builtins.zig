@@ -16,6 +16,10 @@ const cell_size = Forth.cell_size;
 const f_bool = Forth.f_bool;
 
 pub usingnamespace @import("builtins/core.zig");
+pub usingnamespace if (Forth.cfg.optional_wordsets.double)
+    @import("builtins/double.zig")
+else
+    struct {};
 pub usingnamespace if (Forth.cfg.optional_wordsets.file)
     @import("builtins/file.zig")
 else

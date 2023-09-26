@@ -1,5 +1,7 @@
 const Forth = @import("../../Forth.zig");
 
+const Cell = Forth.Cell;
+const DCell = Forth.Cell;
 const Char = Forth.Char;
 
 const cell_bits = Forth.cell_bits;
@@ -188,15 +190,23 @@ pub fn @"PARSE-NAME"(forth: *Forth) noreturn {
     forth.next();
 }
 
-/// ( c-addr u -- n true | false )
+/// ( c-addr u -- n 1 | d -1 | 0 )
 pub fn @"PARSE-NUM"(forth: *Forth) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
-    if (forth.parseInt(addr[0..len])) |n| {
+    const s = addr[0..len];
+    if (s.len > 0 and s[s.len - 1] == '.') {
+        if (forth.parseInt(DCell, s[0 .. s.len - 1])) |d| {
+            forth.pushd(d);
+            forth.push(-1);
+        } else |_| {
+            forth.push(0);
+        }
+    } else if (forth.parseInt(Cell, addr[0..len])) |n| {
         forth.push(n);
-        forth.push(f_bool(true));
+        forth.push(1);
     } else |_| {
-        forth.push(f_bool(false));
+        forth.push(0);
     }
     forth.next();
 }

@@ -114,7 +114,7 @@ pub fn INTERPRET(forth: *Forth) noreturn {
             } else {
                 forth.compile_cell(@bitCast(@intFromPtr(&dict_entry.codeword)));
             }
-        } else if (forth.parseInt(word)) |num| {
+        } else if (forth.parseInt(Cell, word)) |num| {
             if (forth.state == 0) {
                 forth.push(num);
             } else {

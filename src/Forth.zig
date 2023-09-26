@@ -239,7 +239,11 @@ pub fn init(self: *Forth) noreturn {
         .{ .word = "LITSTRING" },
         .{ .string = @embedFile("words/exception.f") },
         .{ .word = "EVALUATE" },
-    } ++
+    } ++ (if (cfg.optional_wordsets.double) .{
+        .{ .word = "LITSTRING" },
+        .{ .string = @embedFile("words/double.f") },
+        .{ .word = "EVALUATE" },
+    } else .{}) ++
         (if (cfg.optional_wordsets.file) .{
         .{ .word = "LITSTRING" },
         .{ .string = @embedFile("words/file.f") },
@@ -272,17 +276,17 @@ pub fn init(self: *Forth) noreturn {
     self.next();
 }
 
-pub fn parseInt(self: *Forth, buf: []const Char) std.fmt.ParseIntError!Cell {
+pub fn parseInt(self: *Forth, comptime T: type, buf: []const Char) std.fmt.ParseIntError!T {
     if (buf.len == 0) return error.InvalidCharacter;
     return switch (buf[0]) {
-        '#' => std.fmt.parseInt(Cell, buf[1..], 10),
-        '$' => std.fmt.parseInt(Cell, buf[1..], 16),
-        '%' => std.fmt.parseInt(Cell, buf[1..], 2),
+        '#' => std.fmt.parseInt(T, buf[1..], 10),
+        '$' => std.fmt.parseInt(T, buf[1..], 16),
+        '%' => std.fmt.parseInt(T, buf[1..], 2),
         '\'' => if (buf.len == 3 and buf[2] == '\'')
             buf[1]
         else
             error.InvalidCharacter,
-        else => std.fmt.parseInt(Cell, buf, @intCast(self.base)),
+        else => std.fmt.parseInt(T, buf, @intCast(self.base)),
     };
 }
 
