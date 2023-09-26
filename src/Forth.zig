@@ -363,7 +363,7 @@ pub fn find_word(self: *const Forth, name: []const Char) ?*DictEntry {
     var curr = self.dict;
     while (curr) |dict_word| : (curr = dict_word.prev) {
         const word_name = std.mem.span(@as([*:0]u8, @ptrCast(&dict_word.name)));
-        if (!dict_word.flags.hidden and std.mem.eql(u8, name, word_name))
+        if (!dict_word.flags.hidden and std.ascii.eqlIgnoreCase(name, word_name))
             return curr;
     }
     return null;
