@@ -10,57 +10,57 @@ const f_bool = Forth.f_bool;
 /// that name. When name is executed, the current ip will be pushed to the
 /// return stack, and the vm will start executing the xts that are compiled
 /// immediately after the word was created.
-pub fn @"DOCOL:"(forth: *Forth) noreturn {
+pub fn @"DOCOL:"(forth: *Forth) callconv(.C) noreturn {
     const name = forth.word(' ', .skip_leading);
     forth.add_word(name, Forth.docol, .{});
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- )
 /// Same as DOCOL:, but doesn't parse anything and creates a dictionary entry
 /// with no name.
-pub fn @"NONAME-DOCOL:"(forth: *Forth) noreturn {
+pub fn @"NONAME-DOCOL:"(forth: *Forth) callconv(.C) noreturn {
     forth.add_word("", Forth.docol, .{});
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( "<spaces>name" -- )
 /// Parses a name delimited by spaces, then creates a new dictionary entry for
 /// that name. When name is executed, the name's data field addres will be
 /// pushed to the stack
-pub fn CREATE(forth: *Forth) noreturn {
+pub fn CREATE(forth: *Forth) callconv(.C) noreturn {
     const name = forth.word(' ', .skip_leading);
     forth.add_word(name, Forth.docreate, .{});
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- )
 /// Make the most recent dictionary entry an immediate word
-pub fn IMMEDIATE(forth: *Forth) noreturn {
+pub fn IMMEDIATE(forth: *Forth) callconv(.C) noreturn {
     forth.dict.?.flags.immediate = true;
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( a-addr -- flag )
 /// flag is true if the dictionary entry pointed to by addr is an immediate
 /// word.
-pub fn @"IMMEDIATE?"(forth: *Forth) noreturn {
+pub fn @"IMMEDIATE?"(forth: *Forth) callconv(.C) noreturn {
     const dict_entry = @as(*DictEntry, @ptrFromInt(forth.popu()));
     forth.push(f_bool(dict_entry.flags.immediate));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- )
 /// Toggles the hidden flag for the most recent dictionary entry
-pub fn HIDDEN(forth: *Forth) noreturn {
+pub fn HIDDEN(forth: *Forth) callconv(.C) noreturn {
     forth.dict.?.flags.hidden = !forth.dict.?.flags.hidden;
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr -- c-addr 0 | xt 1 | xt -1 )
 /// c-addr is a counted string. Looks up a name in the dictionary and returns
 /// 0 if the word isn't found, 1 if its immediate and -1 if its not.
-pub fn FIND(forth: *Forth) noreturn {
+pub fn FIND(forth: *Forth) callconv(.C) noreturn {
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
     const len = addr[0];
     const s = addr[1 .. len + 1];
@@ -71,31 +71,31 @@ pub fn FIND(forth: *Forth) noreturn {
         forth.pushu(@intFromPtr(addr));
         forth.pushu(0);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @">CFA"(forth: *Forth) noreturn {
+pub fn @">CFA"(forth: *Forth) callconv(.C) noreturn {
     const addr = @as(*DictEntry, @ptrFromInt(forth.popu()));
     forth.pushu(@intFromPtr(&addr.codeword));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @"CFA>"(forth: *Forth) noreturn {
+pub fn @"CFA>"(forth: *Forth) callconv(.C) noreturn {
     const addr = @as(*Codeword, @ptrFromInt(forth.popu()));
     const dict_entry = @fieldParentPtr(DictEntry, "codeword", addr);
     forth.pushu(@intFromPtr(dict_entry));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @">BODY"(forth: *Forth) noreturn {
+pub fn @">BODY"(forth: *Forth) callconv(.C) noreturn {
     const addr = @as(*const Codeword, @ptrFromInt(forth.popu()));
     const dict_entry = @fieldParentPtr(DictEntry, "codeword", addr);
     forth.pushu(@intFromPtr(dict_entry) + @sizeOf(DictEntry));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @">DFA"(forth: *Forth) noreturn {
+pub fn @">DFA"(forth: *Forth) callconv(.C) noreturn {
     const addr = forth.popu();
     forth.pushu(addr + @sizeOf(DictEntry));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }

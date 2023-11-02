@@ -12,7 +12,7 @@ const ior_fail = -1;
 /// ( c-addr u -- )
 /// Opens the file at the path given by c-addr[0..u] and makes it the current
 /// input source.
-pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
+pub fn @"FILE-INPUT"(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
     const path = addr[0..len];
@@ -27,33 +27,33 @@ pub fn @"FILE-INPUT"(forth: *Forth) noreturn {
     } };
     forth.input_buffer = &.{};
     forth.in = 1;
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- fam )
 /// pushes the file access method for opening files in read/write mode
-pub fn @"R/W"(forth: *Forth) noreturn {
+pub fn @"R/W"(forth: *Forth) callconv(.C) noreturn {
     forth.push(@intFromEnum(FileMode.rw));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- fam )
 /// pushes the file access method for opening files in write only mode
-pub fn @"W/O"(forth: *Forth) noreturn {
+pub fn @"W/O"(forth: *Forth) callconv(.C) noreturn {
     forth.push(@intFromEnum(FileMode.wo));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- fam )
 /// pushes the file access method for opening files in read only mode
-pub fn @"R/O"(forth: *Forth) noreturn {
+pub fn @"R/O"(forth: *Forth) callconv(.C) noreturn {
     forth.push(@intFromEnum(FileMode.ro));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u fam -- fileid ior )
 /// Create a new file, truncating it if it already exists
-pub fn @"CREATE-FILE"(forth: *Forth) noreturn {
+pub fn @"CREATE-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fam = @as(FileMode, @enumFromInt(forth.pop()));
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
@@ -64,12 +64,12 @@ pub fn @"CREATE-FILE"(forth: *Forth) noreturn {
         forth.push(-1);
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u fam -- fileid ior )
 /// Open an existing file
-pub fn @"OPEN-FILE"(forth: *Forth) noreturn {
+pub fn @"OPEN-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fam = @as(FileMode, @enumFromInt(forth.pop()));
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
@@ -80,22 +80,22 @@ pub fn @"OPEN-FILE"(forth: *Forth) noreturn {
         forth.push(-1);
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( fileid -- ior )
 /// closes an open file
-pub fn @"CLOSE-FILE"(forth: *Forth) noreturn {
+pub fn @"CLOSE-FILE"(forth: *Forth) callconv(.C) noreturn {
     if (io.closeFile(forth.pop())) |_|
         forth.push(ior_success)
     else |_|
         forth.push(ior_fail);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u fileid -- ior )
 /// Writes a string to a file followed by a newline
-pub fn @"WRITE-LINE"(forth: *Forth) noreturn {
+pub fn @"WRITE-LINE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
@@ -103,11 +103,11 @@ pub fn @"WRITE-LINE"(forth: *Forth) noreturn {
         forth.push(ior_success)
     else |_|
         forth.push(ior_fail);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( fileid -- ud ior )
-pub fn @"FILE-POSITION"(forth: *Forth) noreturn {
+pub fn @"FILE-POSITION"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     if (io.filePosition(fileid)) |pos| {
         forth.pushud(pos);
@@ -116,11 +116,11 @@ pub fn @"FILE-POSITION"(forth: *Forth) noreturn {
         forth.pushud(0);
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u_1 fileid -- u_2 flag ior )
-pub fn @"READ-LINE"(forth: *Forth) noreturn {
+pub fn @"READ-LINE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     const len = forth.popu();
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
@@ -143,11 +143,11 @@ pub fn @"READ-LINE"(forth: *Forth) noreturn {
             },
         }
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( fileid -- ud ior )
-pub fn @"FILE-SIZE"(forth: *Forth) noreturn {
+pub fn @"FILE-SIZE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     if (io.fileSize(fileid)) |size| {
         forth.pushud(size);
@@ -156,11 +156,11 @@ pub fn @"FILE-SIZE"(forth: *Forth) noreturn {
         forth.pushud(0);
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( ud fileid -- ior )
-pub fn @"REPOSITION-FILE"(forth: *Forth) noreturn {
+pub fn @"REPOSITION-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     const pos = forth.popud();
     if (io.fileSeek(fileid, pos)) |_| {
@@ -168,11 +168,11 @@ pub fn @"REPOSITION-FILE"(forth: *Forth) noreturn {
     } else |_| {
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u fileid -- ior )
-pub fn @"WRITE-FILE"(forth: *Forth) noreturn {
+pub fn @"WRITE-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
@@ -180,22 +180,22 @@ pub fn @"WRITE-FILE"(forth: *Forth) noreturn {
         forth.push(ior_success)
     else |_|
         forth.push(ior_fail);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( fileid -- ior )
-pub fn @"FLUSH-FILE"(forth: *Forth) noreturn {
+pub fn @"FLUSH-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     if (io.flushFile(fileid)) |_| {
         forth.push(ior_success);
     } else |_| {
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u_1 fileid -- u_2 ior )
-pub fn @"READ-FILE"(forth: *Forth) noreturn {
+pub fn @"READ-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     const len = forth.popu();
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
@@ -206,11 +206,11 @@ pub fn @"READ-FILE"(forth: *Forth) noreturn {
         forth.pushu(0);
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( ud fileid -- ior )
-pub fn @"RESIZE-FILE"(forth: *Forth) noreturn {
+pub fn @"RESIZE-FILE"(forth: *Forth) callconv(.C) noreturn {
     const fileid = forth.pop();
     const length = forth.popud();
     if (io.resizeFile(fileid, length)) |_| {
@@ -218,11 +218,11 @@ pub fn @"RESIZE-FILE"(forth: *Forth) noreturn {
     } else |_| {
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u -- ior )
-pub fn @"DELETE-FILE"(forth: *Forth) noreturn {
+pub fn @"DELETE-FILE"(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
     if (io.deleteFile(addr[0..len])) |_| {
@@ -230,11 +230,11 @@ pub fn @"DELETE-FILE"(forth: *Forth) noreturn {
     } else |_| {
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr_1 u_1 c-addr_2 u_2 -- ior )
-pub fn @"RENAME-FILE"(forth: *Forth) noreturn {
+pub fn @"RENAME-FILE"(forth: *Forth) callconv(.C) noreturn {
     const len2 = forth.popu();
     const addr2 = @as([*]const u8, @ptrFromInt(forth.popu()));
     const len1 = forth.popu();
@@ -245,11 +245,11 @@ pub fn @"RENAME-FILE"(forth: *Forth) noreturn {
         std.debug.print("Error renaming file: {}\n", .{e});
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr u -- x ior )
-pub fn @"FILE-STATUS"(forth: *Forth) noreturn {
+pub fn @"FILE-STATUS"(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
     if (io.fileStatus(addr[0..len])) |_| {
@@ -259,5 +259,5 @@ pub fn @"FILE-STATUS"(forth: *Forth) noreturn {
         forth.push(f_bool(false));
         forth.push(ior_fail);
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }

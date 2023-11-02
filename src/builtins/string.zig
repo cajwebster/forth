@@ -7,17 +7,17 @@ const UCell = Forth.UCell;
 const f_bool = Forth.f_bool;
 
 /// ( c-addr u1 -- c-addr u2 )
-pub fn @"-TRAILING"(forth: *Forth) noreturn {
+pub fn @"-TRAILING"(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr = @as([*]const u8, @ptrFromInt(forth.popu()));
     const s = std.mem.trimRight(u8, addr[0..len], " ");
     forth.pushu(@intFromPtr(s.ptr));
     forth.pushu(s.len);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr1 u1 c-addr2 u2 -- c-addr3 u3 flag )
-pub fn SEARCH(forth: *Forth) noreturn {
+pub fn SEARCH(forth: *Forth) callconv(.C) noreturn {
     const len2 = forth.popu();
     const addr2 = @as([*]const u8, @ptrFromInt(forth.popu()));
     const s2 = addr2[0..len2];
@@ -34,11 +34,11 @@ pub fn SEARCH(forth: *Forth) noreturn {
         forth.pushu(s1.len);
         forth.push(f_bool(false));
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr1 u1 c-addr2 u2 -- n )
-pub fn COMPARE(forth: *Forth) noreturn {
+pub fn COMPARE(forth: *Forth) callconv(.C) noreturn {
     const len2 = forth.popu();
     const addr2 = @as([*]const u8, @ptrFromInt(forth.popu()));
     const s2 = addr2[0..len2];
@@ -50,29 +50,29 @@ pub fn COMPARE(forth: *Forth) noreturn {
         .gt => 1,
         .eq => 0,
     });
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr1 c-addr2 u -- )
-pub fn CMOVE(forth: *Forth) noreturn {
+pub fn CMOVE(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr2 = @as([*]u8, @ptrFromInt(forth.popu()));
     const addr1 = @as([*]const u8, @ptrFromInt(forth.popu()));
     std.mem.copyForwards(u8, addr2[0..len], addr1[0..len]);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr1 c-addr2 u -- )
-pub fn @"CMOVE>"(forth: *Forth) noreturn {
+pub fn @"CMOVE>"(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr2 = @as([*]u8, @ptrFromInt(forth.popu()));
     const addr1 = @as([*]const u8, @ptrFromInt(forth.popu()));
     std.mem.copyBackwards(u8, addr2[0..len], addr1[0..len]);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( c-addr1 u1 c-addr2 -- c-addr2 u2)
-pub fn UNESCAPE(forth: *Forth) noreturn {
+pub fn UNESCAPE(forth: *Forth) callconv(.C) noreturn {
     const addr2 = @as([*]u8, @ptrFromInt(forth.popu()));
     const len = forth.popu();
     const addr1 = @as([*]u8, @ptrFromInt(forth.popu()));
@@ -88,5 +88,5 @@ pub fn UNESCAPE(forth: *Forth) noreturn {
     }
     forth.pushu(@intFromPtr(addr2));
     forth.pushu(i);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }

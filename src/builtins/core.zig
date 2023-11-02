@@ -22,17 +22,17 @@ pub usingnamespace @import("core/variables.zig");
 /// ( -- n )
 /// Reads a literal cell value compiled immediately following this word and
 /// pushes it to the stack.
-pub fn LIT(forth: *Forth) noreturn {
+pub fn LIT(forth: *Forth) callconv(.C) noreturn {
     const val: UCell = @intFromPtr(forth.ip[0]);
     forth.pushu(val);
     forth.ip += 1;
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- c-addr u )
 /// Reads the length of the string after this word. The string immediately
 /// follows the length, and the next word is aligned to the nearest cell.
-pub fn LITSTRING(forth: *Forth) noreturn {
+pub fn LITSTRING(forth: *Forth) callconv(.C) noreturn {
     const len = @as(UCell, @intFromPtr(forth.ip[0]));
     forth.ip += 1;
     const addr = @as([*]const u8, @ptrCast(forth.ip));
@@ -40,29 +40,29 @@ pub fn LITSTRING(forth: *Forth) noreturn {
 
     forth.pushu(@intFromPtr(addr));
     forth.pushu(len);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- )
 /// Reads on offset after this word, and adds that offset to forth.ip.
-pub fn BRANCH(forth: *Forth) noreturn {
+pub fn BRANCH(forth: *Forth) callconv(.C) noreturn {
     const offset: UCell = @divExact(@intFromPtr(forth.ip[0]), cell_size);
     forth.ip += offset;
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( flag -- )
 /// Same as branch, but only if flag is false
-pub fn @"0BRANCH"(forth: *Forth) noreturn {
+pub fn @"0BRANCH"(forth: *Forth) callconv(.C) noreturn {
     const offset: UCell = @divExact(@intFromPtr(forth.ip[0]), cell_size);
     if (forth.pop() == 0)
         forth.ip += offset
     else
         forth.ip += 1;
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @"DOES,"(forth: *Forth) noreturn {
+pub fn @"DOES,"(forth: *Forth) callconv(.C) noreturn {
     const len = @as(UCell, @intFromPtr(forth.ip[0]));
     forth.ip += 1;
     const latest = forth.dict.?;
@@ -78,33 +78,33 @@ pub fn @"DOES,"(forth: *Forth) noreturn {
 
     forth.ip += (len - 1) / Forth.cell_size;
 
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( i * x xt -- j * x )
 /// Executes xt
-pub fn EXECUTE(forth: *Forth) noreturn {
+pub fn EXECUTE(forth: *Forth) callconv(.C) noreturn {
     forth.next_word = @ptrFromInt(forth.popu());
     @call(.always_tail, forth.next_word[0], .{forth});
 }
 
 /// ( -- ) ( R: nest-sys -- )
 /// Returns from the current word to the calling word
-pub fn EXIT(forth: *Forth) noreturn {
+pub fn EXIT(forth: *Forth) callconv(.C) noreturn {
     forth.ip = @ptrFromInt(forth.rpop());
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 /// ( -- )
 /// Returns control to the host operating system
-pub fn BYE(forth: *Forth) noreturn {
+pub fn BYE(forth: *Forth) callconv(.C) noreturn {
     forth.bye();
 }
 
 /// ( i * x "<spaces>name" -- j * x )
 /// Interprets a single word, as described in section 3.4 of the Forth 2012
 /// standard.
-pub fn INTERPRET(forth: *Forth) noreturn {
+pub fn INTERPRET(forth: *Forth) callconv(.C) noreturn {
     const word = forth.word(' ', .skip_leading);
     if (word.len > 0) {
         if (forth.find_word(word)) |dict_entry| {
@@ -133,13 +133,13 @@ pub fn INTERPRET(forth: *Forth) noreturn {
             forth.input_stack = .{};
             forth.input_source = .{ .stdin = undefined };
             forth.in = 0;
-            forth.next();
+            @call(.always_tail, Forth.next, .{forth});
         }
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @"ENVIRONMENT?"(forth: *Forth) noreturn {
+pub fn @"ENVIRONMENT?"(forth: *Forth) callconv(.C) noreturn {
     const len = forth.popu();
     const addr = @as([*]u8, @ptrFromInt(forth.popu()));
     if (envrionment.get(addr[0..len])) |value| {
@@ -154,7 +154,7 @@ pub fn @"ENVIRONMENT?"(forth: *Forth) noreturn {
     } else {
         forth.push(f_bool(false));
     }
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
 const envrionment = std.ComptimeStringMap(union(enum) {
@@ -179,16 +179,16 @@ const envrionment = std.ComptimeStringMap(union(enum) {
     .{ "STACK-CELLS", .{ .cell = Forth.stack_size } },
 });
 
-pub fn RAND(forth: *Forth) noreturn {
+pub fn RAND(forth: *Forth) callconv(.C) noreturn {
     forth.push(forth.rng.random().int(Cell));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn SRAND(forth: *Forth) noreturn {
+pub fn SRAND(forth: *Forth) callconv(.C) noreturn {
     const s = forth.popu();
     if (cell_size < @sizeOf(u64))
         forth.rng.seed(@intCast(s))
     else
         forth.rng.seed(@truncate(s));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }

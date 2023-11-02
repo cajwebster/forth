@@ -1,52 +1,52 @@
 const Forth = @import("../../Forth.zig");
 
-pub fn STATE(forth: *Forth) noreturn {
+pub fn STATE(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.state));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn BASE(forth: *Forth) noreturn {
+pub fn BASE(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.base));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn HERE(forth: *Forth) noreturn {
+pub fn HERE(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(forth.here));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn LATEST(forth: *Forth) noreturn {
+pub fn LATEST(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.dict));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @">IN"(forth: *Forth) noreturn {
+pub fn @">IN"(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.in));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn R0(forth: *Forth) noreturn {
+pub fn R0(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.rstack[0]));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn RSP(forth: *Forth) noreturn {
+pub fn RSP(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.rsp));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn SP(forth: *Forth) noreturn {
+pub fn SP(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.sp));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn @"INPUT-SP"(forth: *Forth) noreturn {
+pub fn @"INPUT-SP"(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(&forth.input_stack.len));
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }
 
-pub fn SOURCE(forth: *Forth) noreturn {
+pub fn SOURCE(forth: *Forth) callconv(.C) noreturn {
     forth.pushu(@intFromPtr(forth.input_buffer.ptr));
     forth.pushu(forth.input_buffer.len);
-    forth.next();
+    @call(.always_tail, Forth.next, .{forth});
 }

@@ -17,7 +17,7 @@ pub const Cell = std.meta.Int(.signed, cell_bits);
 pub const UCell = std.meta.Int(.unsigned, cell_bits);
 pub const DCell = std.meta.Int(.signed, cell_bits * 2);
 pub const UDCell = std.meta.Int(.unsigned, cell_bits * 2);
-pub const Codeword = *const fn (*Forth) noreturn;
+pub const Codeword = *const fn (*Forth) callconv(.C) noreturn;
 const Forth = @This();
 
 pub const f_true: Cell = ~@as(Cell, 0);
@@ -425,19 +425,19 @@ fn compile_word(
     }
 }
 
-pub inline fn next(self: *Forth) noreturn {
+pub fn next(self: *Forth) callconv(.C) noreturn {
     self.next_word = self.ip[0];
     self.ip += 1;
     @call(.always_tail, self.next_word[0], .{self});
 }
 
-pub fn docol(self: *Forth) noreturn {
+pub fn docol(self: *Forth) callconv(.C) noreturn {
     self.rpush(@intFromPtr(self.ip));
     self.ip = @ptrCast(@alignCast(&self.next_word[1]));
-    self.next();
+    @call(.always_tail, Forth.next, .{self});
 }
 
-pub fn dodoes(self: *Forth) noreturn {
+pub fn dodoes(self: *Forth) callconv(.C) noreturn {
     self.rpush(@intFromPtr(self.ip));
     self.pushu(@intFromPtr(&self.next_word[1]));
 
@@ -450,18 +450,18 @@ pub fn dodoes(self: *Forth) noreturn {
     const code_offset = @divExact(dict_entry.flags.code_offset, cell_size);
     if (code_offset >= 0)
         self.ip = @ptrCast(@alignCast(
-            self.next_word + std.math.absCast(code_offset),
+            self.next_word + @abs(code_offset),
         ))
     else
         self.ip = @ptrCast(@alignCast(
-            self.next_word - std.math.absCast(code_offset),
+            self.next_word - @abs(code_offset),
         ));
-    self.next();
+    @call(.always_tail, Forth.next, .{self});
 }
 
-pub fn docreate(self: *Forth) noreturn {
+pub fn docreate(self: *Forth) callconv(.C) noreturn {
     self.pushu(@intFromPtr(&self.next_word[1]));
-    self.next();
+    @call(.always_tail, Forth.next, .{self});
 }
 
 pub fn push(self: *Forth, val: Cell) void {
