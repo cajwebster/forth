@@ -157,13 +157,13 @@ pub fn @"ENVIRONMENT?"(forth: *Forth) callconv(.C) noreturn {
     @call(.always_tail, Forth.next, .{forth});
 }
 
-const envrionment = std.ComptimeStringMap(union(enum) {
+const envrionment = std.StaticStringMap(union(enum) {
     cell: Cell,
     dcell: DCell,
     ucell: UCell,
     udcell: UDCell,
     flag: bool,
-}, .{
+}).initComptime(.{
     .{ "/COUNTED-STRING", .{ .cell = std.math.maxInt(Char) } },
     .{ "/HOLD", .{
         .cell = @as(Cell, @intCast(@This().numeric_output_string.len)),

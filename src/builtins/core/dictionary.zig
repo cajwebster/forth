@@ -82,14 +82,14 @@ pub fn @">CFA"(forth: *Forth) callconv(.C) noreturn {
 
 pub fn @"CFA>"(forth: *Forth) callconv(.C) noreturn {
     const addr = @as(*Codeword, @ptrFromInt(forth.popu()));
-    const dict_entry = @fieldParentPtr(DictEntry, "codeword", addr);
+    const dict_entry = @as(*DictEntry, @fieldParentPtr("codeword", addr));
     forth.pushu(@intFromPtr(dict_entry));
     @call(.always_tail, Forth.next, .{forth});
 }
 
 pub fn @">BODY"(forth: *Forth) callconv(.C) noreturn {
     const addr = @as(*const Codeword, @ptrFromInt(forth.popu()));
-    const dict_entry = @fieldParentPtr(DictEntry, "codeword", addr);
+    const dict_entry = @as(*const DictEntry, @fieldParentPtr("codeword", addr));
     forth.pushu(@intFromPtr(dict_entry) + @sizeOf(DictEntry));
     @call(.always_tail, Forth.next, .{forth});
 }

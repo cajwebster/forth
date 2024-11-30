@@ -441,11 +441,10 @@ pub fn dodoes(self: *Forth) callconv(.C) noreturn {
     self.rpush(@intFromPtr(self.ip));
     self.pushu(@intFromPtr(&self.next_word[1]));
 
-    const dict_entry = @fieldParentPtr(
-        DictEntry,
+    const dict_entry = @as(*const DictEntry, @fieldParentPtr(
         "codeword",
         &self.next_word[0],
-    );
+    ));
 
     const code_offset = @divExact(dict_entry.flags.code_offset, cell_size);
     if (code_offset >= 0)
